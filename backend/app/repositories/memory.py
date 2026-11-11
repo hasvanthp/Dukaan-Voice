@@ -87,15 +87,23 @@ class InMemoryRepository(Repository):
     def record_sale(self, store_id: UUID, actor_id: UUID, items: list[dict], customer_id: UUID | None, paid_amount: float) -> dict:
         total_revenue = 0.0
         total_cost = 0.0
+        validated_items: list[tuple[Product, float, dict]] = []
         for item in items:
             product = self.products[item["product_id"]]
             qty = float(item["quantity"])
+            if product.store_id != store_id:
+                raise ValueError("product not found for this store")
             if product.stock_qty < qty:
                 raise ValueError(f"insufficient stock for {product.name}")
-            product.stock_qty -= qty
-            product.updated_at = datetime.utcnow()
+
+            validated_items.append((product, qty, item))
             total_revenue += qty * float(item["unit_price"])
             total_cost += qty * product.purchase_price
+
+        customer = self.get_customer(store_id, customer_id) if customer_id else None
+        for product, qty, item in validated_items:
+            product.stock_qty -= qty
+            product.updated_at = datetime.utcnow()
             self.inventory_movements.append(
                 {
                     "id": uuid4(),
@@ -128,8 +136,7 @@ class InMemoryRepository(Repository):
         }
         self.sales.append(sale)
 
-        if customer_id:
-            customer = self.get_customer(store_id, customer_id)
+        if customer:
             credit_delta = total_revenue - paid_amount
             customer.outstanding_balance += credit_delta
             customer.updated_at = datetime.utcnow()
