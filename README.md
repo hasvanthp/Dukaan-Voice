@@ -22,12 +22,14 @@ Production-oriented foundation for a multilingual voice-first Kirana assistant.
 python -m venv .venv
 source .venv/bin/activate
 pip install -r backend/requirements.txt
-uvicorn backend.app.main:app --reload
+cd backend
+uvicorn app.main:app --reload
 ```
 
 Run tests:
 ```bash
-pytest backend/tests -q
+cd backend
+pytest tests -q
 ```
 
 Run with Docker:
